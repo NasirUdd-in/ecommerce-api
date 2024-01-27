@@ -51,7 +51,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# AUTH_USER_MODEL = 'ecommercemain.User'
+
 
 ROOT_URLCONF = 'core.urls'
 
