@@ -2,6 +2,15 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db.models.fields.related import ForeignKey, OneToOneField
 
+
+
+class Status(models.Model):
+    status_name = models.CharField(max_length=25, blank=True, null=True)
+    
+    def __str__(self):
+        return self.status_name
+    
+    
 # Create your models here.
 class UserManager(BaseUserManager):
     def create_user(self, first_name, last_name, username, email, password=None):
@@ -51,7 +60,7 @@ class User(AbstractBaseUser):
     email = models.EmailField(max_length=100, unique=True)
     phone_number = models.CharField(max_length=12, blank=True)
     role = models.PositiveSmallIntegerField(choices=ROLE_CHOICE, blank=True, null=True)
-
+    status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
     # required fields
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now_add=True)
@@ -98,3 +107,8 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.email
+
+class Customer(models.Model):
+    user = OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
+    status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
+    authorized_user_id = models.CharField(max_length=255, blank=True, null=True)
