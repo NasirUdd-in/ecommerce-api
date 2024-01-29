@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db.models.fields.related import ForeignKey, OneToOneField
 
@@ -157,19 +158,54 @@ class Product(models.Model):
     
     def __str__(self):
         return self.product_name
+
+
+    
+# class Cart(models.Model):
+#     seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+#     customer = models.OneToOneField(Customer, on_delete = models.CASCADE )
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+    
+    
+    
+    # def total_items(self):
+    #     return sum(item.quantity for item in self.cart_items.all())
+
+    # def total_price(self):
+    #     return sum(item.subtotal for item in self.cart_items.all())
+
+    # def __str__(self):
+    #     return f"Cart for {self.customer.user.username}"
     
 class Cart(models.Model):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
-    customer = models.OneToOneField(Customer, on_delete = models.CASCADE )
+    customer = models.OneToOneField(Customer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    def total_items(self):
-        return sum(item.quantity for item in self.cart_items.all())
 
+    @property
+    def total_quantity(self):
+        # Calculate the total quantity by summing up the quantities of all cart items
+        return self.cart_items.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+
+    @property
     def total_price(self):
-        return sum(item.subtotal for item in self.cart_items.all())
+        # Calculate the total price by summing up the subtotals of all cart items
+        return self.cart_items.aggregate(total_price=Sum('subtotal'))['total_price'] or 0
 
     def __str__(self):
         return f"Cart for {self.customer.user.username}"
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, related_name='cart_items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def save(self, *args, **kwargs):
+        # Calculate the subtotal before saving the cart item
+        self.subtotal = self.product.price * self.quantity
+        super().save(*args, **kwargs)
