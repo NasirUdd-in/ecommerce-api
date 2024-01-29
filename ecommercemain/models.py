@@ -112,3 +112,64 @@ class Customer(models.Model):
     user = OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
     status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
     authorized_user_id = models.CharField(max_length=255, blank=True, null=True)
+    
+    def __str__(self):
+        return self.authorized_user_id
+    
+class SellerType(models.Model):
+    status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
+    seller_type_name = models.CharField(max_length=45, blank=True, null=True)
+    max_product_limit = models.CharField(max_length=255, blank= True, null= True)
+    
+    def __str__(self):
+        return self.seller_type_name
+    
+class Seller(models.Model): 
+   user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True)
+   status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
+   store_name = models.CharField(max_length = 45)
+   seller_type = models.OneToOneField(SellerType, on_delete=models.CASCADE, blank= True, null=True )
+   authorized_user_id = models.CharField(max_length=255, blank=True, null=True)
+   
+class Category(models.Model):
+   seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+   status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
+   category_name = models.CharField(max_length=60)
+   description = models.CharField(max_length=60)
+   
+class Size(models.Model):
+   size_title = models.CharField(max_length=60)
+    
+class Color(models.Model):
+   color_title = models.CharField(max_length=60)
+   
+
+class Product(models.Model):
+    product_name = models.CharField(max_length=100)
+    status = models.OneToOneField(Status, on_delete=models.CASCADE, blank=True, null=True)
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+    size = models.ForeignKey(Size, on_delete=models.CASCADE)
+    color = models.ForeignKey(Color, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    stock_in_hand = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+    
+    def __str__(self):
+        return self.product_name
+    
+class Cart(models.Model):
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+    customer = models.OneToOneField(Customer, on_delete = models.CASCADE )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def total_items(self):
+        return sum(item.quantity for item in self.cart_items.all())
+
+    def total_price(self):
+        return sum(item.subtotal for item in self.cart_items.all())
+
+    def __str__(self):
+        return f"Cart for {self.customer.user.username}"
