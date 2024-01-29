@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Sum
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db.models.fields.related import ForeignKey, OneToOneField
+from decimal import Decimal 
 
 
 
@@ -183,18 +184,18 @@ class Cart(models.Model):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
     customer = models.OneToOneField(Customer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    total_quantity = models.IntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    @property
-    def total_quantity(self):
+    
+    def save(self,*args,**kwargs):
         # Calculate the total quantity by summing up the quantities of all cart items
-        return self.cart_items.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
-
-    @property
-    def total_price(self):
-        # Calculate the total price by summing up the subtotals of all cart items
-        return self.cart_items.aggregate(total_price=Sum('subtotal'))['total_price'] or 0
+        self.total_price= self.cart_items.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+        self.total_quantity = self.cart_items.aggregate(total_price=Sum('subtotal'))['total_price'] or 0
+        
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Cart for {self.customer.user.username}"
@@ -208,4 +209,36 @@ class CartItem(models.Model):
     def save(self, *args, **kwargs):
         # Calculate the subtotal before saving the cart item
         self.subtotal = self.product.price * self.quantity
+        super().save(*args, **kwargs)
+        
+class Order(models.Model):
+    STATUS = (
+        ('Pending', 'Pending'),
+        ('Order Confirmed', 'Order Confirmed'),
+        ('Out for Delivery', 'Out for Delivery'),
+        ('Delivered', 'Delivered'),
+    )
+
+    # cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True)
+    email = models.CharField(max_length=50, null=True)
+    address = models.CharField(max_length=500, null=True)
+    mobile = models.CharField(max_length=20, null=True)
+    order_date = models.DateField(auto_now_add=True, null=True)
+    status = models.CharField(max_length=50, null=True)
+    admin_share_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        # Calculate the total order price using the subtotal of the associated CartItem
+        total_order_price = self.cart.total_price
+
+        # Set admin_share_amount as 20% of the total order price
+        self.admin_share_amount = 0.2 * total_order_price
+
+        # Update the status if needed
+        # (You might want to customize this logic based on your specific requirements)
+        if not self.status:
+            self.status = 'Pending'
+
         super().save(*args, **kwargs)
